@@ -27,40 +27,57 @@ class Game(object):
         self.player1.game = self
         self.player2.game = self
         self.time = time.now()
+        self.serve = 1
 
     def __iter__(self):
         yield ('player1', dict(self.player1))
         yield ('player2', dict(self.player2))
         yield ('ball', dict(self.ball))
+        yield ('serve', self.serve)
         
     def _frame_count(self):
         delta = time.now() - self.time
-        return (delta.days*24*60*60*1000 + delta.seconds*1000 + delta.microseconds / 1000) / 25
+        return (delta.days*24*60*60*1000 + delta.seconds*1000 + delta.microseconds / 1000) / 30
         
     def _reset_time(self):
         self.time = time.now()
+        
+    def _check_game(self):
+        if self.ball.x + self.ball.w < 0:
+            self.player2.score += 1
+            self.serve = 1
+        if self.ball.x > Game.WIDTH:
+            self.player1.score += 1
+            self.serve = 2
 
-    def update(self):
+    def do_serve(self, player):
+        if player == self.player1 and self.serve == 1:
+            self.serve = 0
+        if player == self.player2 and self.serve == 2:
+            self.serve = 0
+            
+    def do_update(self):
         fc = self._frame_count()
         self._reset_time()
         for i in range(0, fc):
-            self.player1.update()
-            self.player2.update()
-            self.ball.update()
-        
+            self.player1.update(self)
+            self.player2.update(self)
+            self.ball.update(self)
+            self._check_game()
+
 
 class Player(object):
     WIDTH = 10
     HEIGHT = 70
     LEFT = 10
     RIGHT = Game.WIDTH-10-WIDTH
+    TOP = 20
     VELOCITY = 5
     
     def __init__(self, username):
-        self.game = None
         self.username = username
         self.x = Player.LEFT
-        self.y = 20
+        self.y = Player.TOP
         self.w = Player.WIDTH
         self.h = Player.HEIGHT
         self.v = Player.VELOCITY
@@ -76,7 +93,7 @@ class Player(object):
         yield ('move', self.move)
         yield ('score', self.score)        
             
-    def update(self):
+    def update(self, game):
         self.y += self.v * self.move;
         # Stop pad at sidelines
         if self.y < 0:
@@ -89,6 +106,7 @@ class AIPlayer(Player):
     def __init__(self):
         super(AIPlayer, self).__init__('AI')
         self.y = 150
+        self.serve_counter = 0
 
     def __iter__(self):
         yield ('x', self.x)
@@ -100,10 +118,17 @@ class AIPlayer(Player):
         yield ('score', self.score)
         yield ('ai', True)
         
-    def update(self):
-        bx = self.game.ball.x
-        by = self.game.ball.y
-        ba = self.game.ball.a % (2 * pi)
+    def update(self, game):
+        if game.ball.v != 0 and game.serve == 2:
+            self.serve_counter = 50
+        if self.serve_counter > 0:
+            self.serve_counter -= 1
+        if game.ball.v == 0 and game.serve == 2 and self.serve_counter == 0:
+            game.do_serve(self) 
+    
+        bx = game.ball.x
+        by = game.ball.y
+        ba = game.ball.a % (2 * pi)
         ba = ba * 360 / 2 / pi
         if (ba > 0 and ba < 90) or (ba > 270 and ba < 360) or (ba < 0 and ba > -90):
             final_yf = by + (self.x - bx) * tan(pi * ba / 180)
@@ -115,20 +140,24 @@ class AIPlayer(Player):
                 self.y += 5
             if (self.y + self.h / 2) > final_y:
                 self.y -= 5
-        super(AIPlayer, self).update()
+        super(AIPlayer, self).update(game)
 
         
 class Ball(object):
     WIDTH = 10
     HEIGHT = 10
+    VELOCITY = 10
+    
+    LEFT = Player.LEFT + Player.WIDTH + WIDTH
+    RIGHT = Player.RIGHT - 2*WIDTH
     
     def __init__(self, game):
         self.game = game
-        self.x = 40
-        self.y = 40
+        self.x = Player.LEFT
+        self.y = Player.TOP
         self.w = Ball.WIDTH
         self.h = Ball.HEIGHT 
-        self.v = 5
+        self.v = 0
         self.a = pi / 3; 
 
     def __iter__(self):
@@ -139,7 +168,19 @@ class Ball(object):
         yield ('a', self.a)
         yield ('v', self.v)
             
-    def update(self):
+    def update(self, game):
+        if game.serve == 1:
+            self.x = Ball.LEFT
+            self.y = game.player1.y
+            self.v = 0 
+            return
+        if game.serve == 2:
+            self.x = Ball.RIGHT
+            self.y = game.player2.y
+            self.v = 0 
+            return
+            
+        self.v  = Ball.VELOCITY
         self.x += self.v * cos(self.a)
         self.y += self.v * sin(self.a)
         # Reflect ball at sidelines
@@ -204,7 +245,7 @@ def handle_challenge_ai():
 @socketio.on('move')
 def handle_move(json):
     game = games[request.sid]
-    game.update()
+    game.do_update()
     player = players[request.sid]
     player.move = json['direction']
     emit('game_update', dict(game=dict(game)))
@@ -212,8 +253,15 @@ def handle_move(json):
 @socketio.on('ball')
 def handle_ball():
     game = games[request.sid]
-    game.update()
+    game.do_update()
     emit('game_update', dict(game=dict(game)))
+
+@socketio.on('serve')
+def handle_ball():
+    game = games[request.sid]
+    game.do_serve(players[request.sid])
+    game.do_update()
+    emit('game_update', dict(game=dict(game)))    
         
 if __name__ == '__main__':
     socketio.run(app)
