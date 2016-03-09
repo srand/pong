@@ -53,8 +53,12 @@ class Game(object):
     def do_serve(self, player):
         if player == self.player1 and self.serve == 1:
             self.serve = 0
+            self.ball.v = Ball.VELOCITY
+            print("do_serve")
         if player == self.player2 and self.serve == 2:
             self.serve = 0
+            self.ball.v = Ball.VELOCITY
+            print("do_serve")
             
     def do_update(self):
         fc = self._frame_count()
@@ -65,6 +69,16 @@ class Game(object):
             self.ball.update(self)
             self._check_game()
 
+    def broadcast(self, event, data=None):
+        self.player1.emit(event, data)
+        self.player2.emit(event, data)
+
+    def emit_start(self):
+        self.broadcast('game_start', data=dict(game=dict(self), user1=self.player1.username, user2=self.player2.username))
+
+    def emit_update(self):
+        self.broadcast("game_update", data=dict(game=dict(self)))    
+
 
 class Player(object):
     WIDTH = 10
@@ -74,7 +88,7 @@ class Player(object):
     TOP = 20
     VELOCITY = 5
     
-    def __init__(self, username):
+    def __init__(self, username, sid=None):
         self.username = username
         self.x = Player.LEFT
         self.y = Player.TOP
@@ -83,6 +97,7 @@ class Player(object):
         self.v = Player.VELOCITY
         self.move = 0
         self.score = 0
+        self.sid = sid
 
     def __iter__(self):
         yield ('x', self.x)
@@ -101,12 +116,14 @@ class Player(object):
         if self.y + self.h >= Game.HEIGHT:
             self.y = Game.HEIGHT - self.h - 1
 
+    def emit(self, event, data=None):
+        emit(event, data, room=self.sid)
+
 
 class AIPlayer(Player):
     def __init__(self):
         super(AIPlayer, self).__init__('AI')
         self.y = 150
-        self.serve_counter = 0
 
     def __iter__(self):
         yield ('x', self.x)
@@ -119,13 +136,6 @@ class AIPlayer(Player):
         yield ('ai', True)
         
     def update(self, game):
-        if game.ball.v != 0 and game.serve == 2:
-            self.serve_counter = 50
-        if self.serve_counter > 0:
-            self.serve_counter -= 1
-        if game.ball.v == 0 and game.serve == 2 and self.serve_counter == 0:
-            game.do_serve(self) 
-    
         bx = game.ball.x
         by = game.ball.y
         ba = game.ball.a % (2 * pi)
@@ -142,6 +152,9 @@ class AIPlayer(Player):
                 self.y -= 5
         super(AIPlayer, self).update(game)
 
+    def emit(self, event, data=None):
+        pass
+        
         
 class Ball(object):
     WIDTH = 10
@@ -229,18 +242,23 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    pass
+    if request.sid in players:
+        del players[request.sid]
+    if request.sid in games:
+        game = games[request.sid]
+        game.broadcast('game_disconnect')
+        del games[request.sid]
 
 @socketio.on('signup')
 def handle_signup(json):
-    players[request.sid] = Player(json['username'])
+    players[request.sid] = Player(json['username'], request.sid)
     emit('signed_up', json)
 
 @socketio.on('challenge_ai')
 def handle_challenge_ai():
     player = players[request.sid]
     games[request.sid] = game = Game(player, AIPlayer())
-    emit('game_start', dict(game=dict(game), user1=game.player1.username, user2=game.player2.username))
+    game.emit_start()
 
 @socketio.on('move')
 def handle_move(json):
@@ -248,20 +266,27 @@ def handle_move(json):
     game.do_update()
     player = players[request.sid]
     player.move = json['direction']
-    emit('game_update', dict(game=dict(game)))
+    game.emit_update()
 
 @socketio.on('ball')
 def handle_ball():
     game = games[request.sid]
     game.do_update()
-    emit('game_update', dict(game=dict(game)))
+    game.emit_update()
 
 @socketio.on('serve')
-def handle_ball():
+def handle_serve():
     game = games[request.sid]
     game.do_serve(players[request.sid])
     game.do_update()
-    emit('game_update', dict(game=dict(game)))    
-        
+    game.emit_update()
+
+@socketio.on('serve_ai')
+def handle_serve_ai():
+    game = games[request.sid]
+    game.do_serve(game.player2)
+    game.do_update()
+    game.emit_update()
+
 if __name__ == '__main__':
     socketio.run(app)
