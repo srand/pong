@@ -65,6 +65,9 @@
             }
             
             div#signup {
+                font-family: Courier New, Courier, monospace;
+                font-size: 40pt;
+                font-weight: normal;
                 text-align: center;
                 vertical-align: middle;
                 width: 100%;
@@ -72,12 +75,18 @@
                 margin-right: auto;                 
             }
             
-            div#staging {
+            h1 {
+                font-family: Courier New, Courier, monospace;
+                font-size: 40pt;
+                font-weight: normal;
                 text-align: center;
                 vertical-align: middle;
                 width: 100%;
             }
-            div#staging_ai {
+            h2 {
+                font-family: Courier New, Courier, monospace;
+                font-size: 20pt;
+                font-weight: normal;
                 text-align: center;
                 vertical-align: middle;
                 width: 100%;
@@ -111,9 +120,11 @@
                 document.body.onkeypress = to.on_keypress_event;
                 if (current_page) {
                     document.getElementById("content").className = "hidden";
+                    current_page.on_unload();
                     setTimeout(function(){
                         document.getElementById("content").innerHTML = document.getElementById("content_" + to.name).innerHTML; 
                         document.getElementById("content").className = "visible";
+                        current_page = to;
                         to.on_load();                                               
                     }, 500);
                 } else {
@@ -123,6 +134,13 @@
                 }
             }
             
+            var blip1 = new Audio('http://' + document.domain + '/audio/blip1.mp3', 'audio/mpeg');
+            var blip2 = new Audio('http://' + document.domain + '/audio/blip2.mp3', 'audio/mpeg');
+            var blip3 = new Audio('http://' + document.domain + '/audio/blip3.mp3', 'audio/mpeg');
+            var blip4 = new Audio('http://' + document.domain + '/audio/blip4.mp3', 'audio/mpeg');
+            var cheer = new Audio('http://' + document.domain + '/audio/cheer.mp3', 'audio/mpeg');
+            var go = new Audio('http://' + document.domain + '/audio/go.mp3', 'audio/mpeg');
+            
             var signup = {
                 name: "signup",
                 on_keypress_event: function () {
@@ -130,12 +148,15 @@
                     if (event.charCode == 8) {
                         elem.innerHTML = elem.innerHTML.slice(0, -1);
                     } else if (event.charCode == 13) {
-                        socket.emit('signup', {username: elem.innerHTML});
+                        game.username = elem.innerHTML;
+                        socket.emit('signup', {username: game.username});
                     } else {
                         elem.innerHTML += String.fromCharCode(event.charCode);
                     }
                 },
-                on_load: function() {}
+                on_load: function() {},
+                on_unload: function() {}
+
             }
            
             var staging = {
@@ -145,11 +166,14 @@
                         socket.emit('challenge_ai');
                     }
                 },
-                on_load: function() {}
+                on_load: function() {},
+                on_unload: function() {}
+
             }
             
             var game = {
                 name: "game",
+                username: "",
                 timer: null,
                 timer_ai: null,
                 width: 600,
@@ -241,9 +265,11 @@
                         game.state.ball.y += game.state.ball.v * Math.sin(game.state.ball.a);
                         if (game.state.ball.y < 0) {
                             game.state.ball.a = 2*Math.PI - game.state.ball.a; 
+                            blip1.play();
                         }
                         if (game.state.ball.y + game.state.ball.h > game.height) {
                             game.state.ball.a = 2*Math.PI - game.state.ball.a; 
+                            blip2.play();
                         }
                         var collides = function(ball, player) {
                             l1 = ball.x - 5;
@@ -263,10 +289,12 @@
                         if (collides(game.state.ball, game.state.player1)) {
                             game.state.ball.a = Math.PI - game.state.ball.a
                             socket.emit("ball");                            
+                            blip3.play();
                         }
                         if (collides(game.state.ball, game.state.player2)) {
                             game.state.ball.a = Math.PI - game.state.ball.a
                             socket.emit("ball");                            
+                            blip4.play();
                         }
                         if (game.state.ball.x + game.state.ball.w < 0) {
                             socket.emit("ball");
@@ -281,7 +309,7 @@
                             game.state.ball.y = game.state.player2.y;
                         }
                         if (game.state.serve === 2 && game.state.player2.ai === true && game.timer_ai === null) {
-                            game.timer_ai = setTimeout(function(){game.timer_ai = null;socket.emit("serve_ai");}, 3000);
+                            game.timer_ai = setTimeout(function(){game.timer_ai = null;socket.emit("serve_ai");}, 1500);
                         }
                     }
                     game.render();
@@ -338,8 +366,44 @@
                 },
                 on_load: function() {
                     game.render();                    
+                },
+                on_unload: function() {
+                    clearInterval(game.timer);                    
+                    clearTimeout(game.timer_ai);                    
                 }
-            }            
+            }
+            var game_won = {
+                name: "game_won",
+                on_keydown_event: function () {
+                    if (event.keyCode == 13) {
+                        socket.emit('signup', {username: game.username});
+                    }
+                },
+                on_load: function() {},
+                on_unload: function() {}
+
+            }
+            var game_lost = {
+                name: "game_lost",
+                on_keydown_event: function () {
+                    if (event.keyCode == 13) {
+                        socket.emit('signup', {username: game.username});
+                    }
+                },
+                on_load: function() {},
+                on_unload: function() {}
+
+            }
+            var game_disconnect = {
+                name: "game_disconnect",
+                on_keydown_event: function () {
+                    if (event.keyCode == 13) {
+                        socket.emit('signup', {username: game.username});
+                    }
+                },
+                on_load: function() {},
+                on_unload: function() {}
+            }                                                
                              
             function on_load() {
                 navigate(signup);
@@ -357,6 +421,21 @@
             socket.on('game_update', function(data) {
                 game.update(data.game);
             });            
+            
+            socket.on('game_won', function(data) {
+                navigate(game_won);
+                cheer.play();
+            });            
+            
+            socket.on('game_lost', function(data) {
+                navigate(game_lost);
+                go.play();
+            });            
+
+            socket.on('game_disconnect', function(data) {
+                navigate(game_disconnect);
+                cheer.play();
+            });            
         </script>
     </head>
     
@@ -366,13 +445,26 @@
                 <div id="content"></div>
                 <div id="content_signup" class="none">
                     <div content="signup">
-                        <div>ENTER YOUR NAME</div><div><span id="username"></span><span class="caret">&#9612;</span></div>
+                        <h1>ENTER YOUR NAME</h1>
+                        <div><span id="username"></span><span class="caret">&#9612;</span></div>
                     </div>
                 </div>
                 <div id="content_staging" class="none">
-                    <div id="staging">WAITING FOR OPPONENT</div>
-                    <div id="staging_ai">PRESS ENTER TO CHALLENGE AN AI</div>
-                </div>                
+                    <h1>WAITING FOR OPPONENT</h1>
+                    <h2 id="staging_ai">PRESS ENTER TO CHALLENGE AN AI</h2>
+                </div>
+                <div id="content_game_won" class="none">
+                    <h1>GAME WON, YAY!</h1>
+                    <h2 id="staging_ai">PRESS ENTER TO START A NEW GAME</h2>
+                </div>
+                <div id="content_game_lost" class="none">
+                    <h1>GAME LOST, SUCKER!</h1>
+                    <h2 id="staging_ai">PRESS ENTER TO START A NEW GAME</h2>
+                </div>
+                <div id="content_game_disconnect" class="none">
+                    <h1>OPPONENT DISCONNECTED</h1>
+                    <h2 id="staging_ai">PRESS ENTER TO START A NEW GAME</h2>
+                </div>                                                
                 <div id="content_game" class="none">
                     <canvas id="game" width="600" height="400"></canvas>
                 </div>
