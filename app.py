@@ -62,7 +62,7 @@ class Game(object):
 
     def _frame_count(self):
         delta = time.now() - self.time
-        return (delta.days*24*60*60*1000 + delta.seconds*1000 + delta.microseconds / 1000) / 30
+        return int((delta.days*24*60*60*1000 + delta.seconds*1000 + delta.microseconds / 1000) / 30)
 
     def _reset_time(self):
         self.time = time.now()
