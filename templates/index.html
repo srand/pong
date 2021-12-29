@@ -14,7 +14,7 @@
                 height: 100%;
                 display: table;
             }
-            
+
             .caret {
                 animation-duration: 0.5s;
                 animation-name: caret;
@@ -29,8 +29,8 @@
                 to {
                     opacity: 0;
                 }
-            }          
-            
+            }
+
             .visible {
                 visibility: visible;
                 opacity: 1;
@@ -40,11 +40,11 @@
                 visibility: hidden;
                 opacity: 0;
                 transition: visibility 0s 0.5s, opacity 0.5s linear;
-            }              
+            }
             .none {
                 display: none;
             }
-            
+
             div#outer {
                 display: table;
                 position: absolute;
@@ -57,13 +57,13 @@
                 vertical-align: middle;
                 width: 100%;
             }
-            
+
             div#content {
                 text-align: center;
                 vertical-align: middle;
                 width: 100%;
             }
-            
+
             div#signup {
                 font-family: Courier New, Courier, monospace;
                 font-size: 40pt;
@@ -72,9 +72,9 @@
                 vertical-align: middle;
                 width: 100%;
                 margin-left: auto;
-                margin-right: auto;                 
+                margin-right: auto;
             }
-            
+
             h1 {
                 font-family: Courier New, Courier, monospace;
                 font-size: 40pt;
@@ -91,16 +91,16 @@
                 vertical-align: middle;
                 width: 100%;
                 font-size: 20px;
-            }            
-            
+            }
+
             div#game {
                 display: inline-block;
                 text-align: center;
                 vertical-align: middle;
                 border-top: 5px solid white;
                 border-bottom: 5px solid white;
-                padding: 0px;                                
-                margin: 0px;                
+                padding: 0px;
+                margin: 0px;
                 width:600px;
                 height:400px;
             }
@@ -113,7 +113,7 @@
             });
 
             var current_page = null;
-            
+
             var navigate = function(to) {
                 document.body.onkeydown = to.on_keydown_event;
                 document.body.onkeyup = to.on_keyup_event;
@@ -122,25 +122,25 @@
                     document.getElementById("content").className = "hidden";
                     current_page.on_unload();
                     setTimeout(function(){
-                        document.getElementById("content").innerHTML = document.getElementById("content_" + to.name).innerHTML; 
+                        document.getElementById("content").innerHTML = document.getElementById("content_" + to.name).innerHTML;
                         document.getElementById("content").className = "visible";
                         current_page = to;
-                        to.on_load();                                               
+                        to.on_load();
                     }, 500);
                 } else {
-                    document.getElementById("content").innerHTML = document.getElementById("content_" + to.name).innerHTML; 
+                    document.getElementById("content").innerHTML = document.getElementById("content_" + to.name).innerHTML;
                     current_page = to;
                     to.on_load();
                 }
             }
-            
+
             var blip1 = new Audio('http://' + document.domain + '/audio/blip1.mp3', 'audio/mpeg');
             var blip2 = new Audio('http://' + document.domain + '/audio/blip2.mp3', 'audio/mpeg');
             var blip3 = new Audio('http://' + document.domain + '/audio/blip3.mp3', 'audio/mpeg');
             var blip4 = new Audio('http://' + document.domain + '/audio/blip4.mp3', 'audio/mpeg');
             var cheer = new Audio('http://' + document.domain + '/audio/cheer.mp3', 'audio/mpeg');
             var go = new Audio('http://' + document.domain + '/audio/go.mp3', 'audio/mpeg');
-            
+
             var signup = {
                 name: "signup",
                 on_keypress_event: function () {
@@ -158,7 +158,7 @@
                 on_unload: function() {}
 
             }
-           
+
             var staging = {
                 name: "staging",
                 on_keydown_event: function () {
@@ -170,7 +170,7 @@
                 on_unload: function() {}
 
             }
-            
+
             var game = {
                 name: "game",
                 username: "",
@@ -183,7 +183,7 @@
                     if (event.keyCode == 38 && !game.moving) {
                         game.moving = true;
                         socket.emit('move', {direction: -1});
-                        return; 
+                        return;
                     }
                     if (event.keyCode == 40 && !game.moving) {
                         game.moving = true;
@@ -192,8 +192,8 @@
                     }
                     if (event.keyCode == 32 && game.state.serve != 0) {
                         socket.emit('serve');
-                        return; 
-                    }                    
+                        return;
+                    }
                 },
                 on_keyup_event: function () {
                     if (event.keyCode == 38 && game.moving) {
@@ -218,7 +218,7 @@
                         game.state = state;
                     } else {
                         // Timer triggered
-                        
+
                         // Update players
                         game.state.player1.y += game.state.player1.move * game.state.player1.v;
                         if (game.state.player2.ai) {
@@ -232,7 +232,7 @@
                                 odd = (final_y / (game.height-20)) & 1;
                                 final_y %= (game.height-20);
                                 if (odd) {
-                                    final_y = (game.height - 10);    
+                                    final_y = (game.height - 10);
                                 } else {
                                     final_y = (10 + final_y);
                                 }
@@ -264,11 +264,11 @@
                         game.state.ball.x += game.state.ball.v * Math.cos(game.state.ball.a);
                         game.state.ball.y += game.state.ball.v * Math.sin(game.state.ball.a);
                         if (game.state.ball.y < 0) {
-                            game.state.ball.a = 2*Math.PI - game.state.ball.a; 
+                            game.state.ball.a = 2*Math.PI - game.state.ball.a;
                             blip1.play();
                         }
                         if (game.state.ball.y + game.state.ball.h > game.height) {
-                            game.state.ball.a = 2*Math.PI - game.state.ball.a; 
+                            game.state.ball.a = 2*Math.PI - game.state.ball.a;
                             blip2.play();
                         }
                         var collides = function(ball, player) {
@@ -288,12 +288,12 @@
                         }
                         if (collides(game.state.ball, game.state.player1)) {
                             game.state.ball.a = Math.PI - game.state.ball.a
-                            socket.emit("ball");                            
+                            socket.emit("ball");
                             blip3.play();
                         }
                         if (collides(game.state.ball, game.state.player2)) {
                             game.state.ball.a = Math.PI - game.state.ball.a
-                            socket.emit("ball");                            
+                            socket.emit("ball");
                             blip4.play();
                         }
                         if (game.state.ball.x + game.state.ball.w < 0) {
@@ -319,7 +319,7 @@
                     var ctx = c.getContext("2d");
 
                     ctx.setLineDash([1,0]);
-                    
+
                     // Background
                     ctx.strokeStyle = "black";
                     ctx.fillStyle = "black";
@@ -335,41 +335,41 @@
                         ctx.fillRect(game.state.player1.x, game.state.player1.y, game.state.player1.w, game.state.player1.h);
                         ctx.fillRect(game.state.ball.x, game.state.ball.y, game.state.ball.w, game.state.ball.h);
                         ctx.fillRect(game.state.player2.x, game.state.player2.y, game.state.player2.w, game.state.player2.h);
-                        ctx.stroke();    
+                        ctx.stroke();
                     }
 
                     // Long sidelines
                     ctx.beginPath();
                     ctx.lineWidth = 5
-                    ctx.moveTo(0,0);ctx.lineTo(game.width,0);       
-                    ctx.moveTo(0,game.height);ctx.lineTo(game.width,game.height);       
+                    ctx.moveTo(0,0);ctx.lineTo(game.width,0);
+                    ctx.moveTo(0,game.height);ctx.lineTo(game.width,game.height);
                     ctx.stroke();
 
-                    // Net and short sidelines (dashed) 
+                    // Net and short sidelines (dashed)
                     ctx.lineWidth = 5
                     ctx.beginPath();
                     ctx.setLineDash([5]);
-                    ctx.moveTo(game.width/2,0);ctx.lineTo(game.width/2,game.height);       
+                    ctx.moveTo(game.width/2,0);ctx.lineTo(game.width/2,game.height);
                     ctx.stroke();
                     ctx.beginPath();
                     ctx.lineWidth = 1
-                    ctx.moveTo(0,0);ctx.lineTo(0,game.height);       
-                    ctx.moveTo(game.width,0);ctx.lineTo(game.width,game.height);       
+                    ctx.moveTo(0,0);ctx.lineTo(0,game.height);
+                    ctx.moveTo(game.width,0);ctx.lineTo(game.width,game.height);
                     ctx.stroke();
-                    
+
                     // Names and scores
                     ctx.font = "20px Courier New, Courier, monospace";
                     ctx.textAlign = "right";
-                    ctx.fillText(game.user1 + " - " + game.state.player1.score, game.width/2 - 20, 30);                     
+                    ctx.fillText(game.user1 + " - " + game.state.player1.score, game.width/2 - 20, 30);
                     ctx.textAlign = "left";
-                    ctx.fillText(game.state.player2.score + " - " + game.user2, game.width/2 + 20, 30);                     
+                    ctx.fillText(game.state.player2.score + " - " + game.user2, game.width/2 + 20, 30);
                 },
                 on_load: function() {
-                    game.render();                    
+                    game.render();
                 },
                 on_unload: function() {
-                    clearInterval(game.timer);                    
-                    clearTimeout(game.timer_ai);                    
+                    clearInterval(game.timer);
+                    clearTimeout(game.timer_ai);
                 }
             }
             var game_won = {
@@ -403,42 +403,42 @@
                 },
                 on_load: function() {},
                 on_unload: function() {}
-            }                                                
-                             
+            }
+
             function on_load() {
                 navigate(signup);
             }
-            
+
             socket.on('signed_up', function(data) {
                 navigate(staging);
-            });            
-            
+            });
+
             socket.on('game_start', function(data) {
                 navigate(game);
                 game.start(data.game, data.user1, data.user2);
-            });            
-            
+            });
+
             socket.on('game_update', function(data) {
                 game.update(data.game);
-            });            
-            
+            });
+
             socket.on('game_won', function(data) {
                 navigate(game_won);
                 cheer.play();
-            });            
-            
+            });
+
             socket.on('game_lost', function(data) {
                 navigate(game_lost);
                 go.play();
-            });            
+            });
 
             socket.on('game_disconnect', function(data) {
                 navigate(game_disconnect);
                 cheer.play();
-            });            
+            });
         </script>
     </head>
-    
+
     <body onload="on_load()">
         <div id="outer">
             <div id="middle">
@@ -464,7 +464,7 @@
                 <div id="content_game_disconnect" class="none">
                     <h1>OPPONENT DISCONNECTED</h1>
                     <h2 id="staging_ai">PRESS ENTER TO START A NEW GAME</h2>
-                </div>                                                
+                </div>
                 <div id="content_game" class="none">
                     <canvas id="game" width="600" height="400"></canvas>
                 </div>

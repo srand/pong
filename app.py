@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+
 from flask import Flask, render_template, request, send_from_directory
-from flask_socketio import SocketIO, send, emit
+from flask_socketio import SocketIO, emit
 from datetime import datetime as time
 from math import cos, sin, tan, pi
 
@@ -20,9 +22,9 @@ if not app.debug:
 class Game(object):
     WIDTH = 600
     HEIGHT = 400
-    
+
     _games = {}
-    
+
     @staticmethod
     def register(game):
         Game._games[game.player1.sid] = game
@@ -57,14 +59,14 @@ class Game(object):
         yield ('player2', dict(self.player2))
         yield ('ball', dict(self.ball))
         yield ('serve', self.serve)
-        
+
     def _frame_count(self):
         delta = time.now() - self.time
         return (delta.days*24*60*60*1000 + delta.seconds*1000 + delta.microseconds / 1000) / 30
-        
+
     def _reset_time(self):
         self.time = time.now()
-        
+
     def _check_game(self):
         if self.ball.x + self.ball.w < 0:
             self.player2.score += 1
@@ -76,7 +78,7 @@ class Game(object):
             self.player1.emit("game_won")
             self.player2.emit("game_lost")
             Game.unregister(self)
-            return False            
+            return False
         if self.player2.score >= 11:
             self.player1.emit("game_lost")
             self.player2.emit("game_won")
@@ -92,7 +94,7 @@ class Game(object):
         if player == self.player2 and self.serve == 2:
             self.serve = 0
             self.ball.v = Ball.VELOCITY
-            
+
     def do_update(self):
         fc = self._frame_count()
         self._reset_time()
@@ -111,7 +113,7 @@ class Game(object):
         self.broadcast('game_start', data=dict(game=dict(self), user1=self.player1.username, user2=self.player2.username))
 
     def emit_update(self):
-        self.broadcast("game_update", data=dict(game=dict(self)))    
+        self.broadcast("game_update", data=dict(game=dict(self)))
 
 
 class Player(object):
@@ -121,10 +123,10 @@ class Player(object):
     RIGHT = Game.WIDTH-10-WIDTH
     TOP = 20
     VELOCITY = 5
-    
+
     _players = {}
     _lobby = []
-    
+
     @staticmethod
     def register(player):
         Player._players[player.sid] = player
@@ -140,22 +142,22 @@ class Player(object):
         if sid not in Player._players:
             return None
         return Player._players[sid]
-            
+
     @staticmethod
     def add_lobby(player):
-        Player._lobby.append(player)            
+        Player._lobby.append(player)
 
     @staticmethod
     def pop_lobby():
         if len(Player._lobby) > 0:
             player = Player._lobby[0]
             del Player._lobby[0]
-            return player           
-            
+            return player
+
     @staticmethod
-    def rem_lobby(player):         
+    def rem_lobby(player):
         if player in Player._lobby:
-            Player._lobby.remove(player)     
+            Player._lobby.remove(player)
 
     def __init__(self, username, sid=None):
         self.username = username
@@ -175,10 +177,10 @@ class Player(object):
         yield ('h', self.h)
         yield ('v', self.v)
         yield ('move', self.move)
-        yield ('score', self.score)        
-            
+        yield ('score', self.score)
+
     def update(self, game):
-        self.y += self.v * self.move;
+        self.y += self.v * self.move
         # Stop pad at sidelines
         if self.y < 0:
             self.y = 1
@@ -203,7 +205,7 @@ class AIPlayer(Player):
         yield ('move', self.move)
         yield ('score', self.score)
         yield ('ai', True)
-        
+
     def update(self, game):
         bx = game.ball.x
         by = game.ball.y
@@ -223,24 +225,24 @@ class AIPlayer(Player):
 
     def emit(self, event, data=None):
         pass
-        
-        
+
+
 class Ball(object):
     WIDTH = 10
     HEIGHT = 10
     VELOCITY = 10
-    
+
     LEFT = Player.LEFT + Player.WIDTH + WIDTH
     RIGHT = Player.RIGHT - 2*WIDTH
-    
+
     def __init__(self, game):
         self.game = game
         self.x = Player.LEFT
         self.y = Player.TOP
         self.w = Ball.WIDTH
-        self.h = Ball.HEIGHT 
+        self.h = Ball.HEIGHT
         self.v = 0
-        self.a = pi / 3; 
+        self.a = pi / 3
 
     def __iter__(self):
         yield ('x', self.x)
@@ -249,7 +251,7 @@ class Ball(object):
         yield ('h', self.h)
         yield ('a', self.a)
         yield ('v', self.v)
-            
+
     def update(self, game):
         if game.serve == 1:
             self.x = Ball.LEFT
@@ -259,16 +261,16 @@ class Ball(object):
         if game.serve == 2:
             self.x = Ball.RIGHT
             self.y = game.player2.y
-            self.v = 0 
+            self.v = 0
             return
-        
-        self.v  = Ball.VELOCITY
+
+        self.v = Ball.VELOCITY
         self.x += self.v * cos(self.a)
         self.y += self.v * sin(self.a)
         # Reflect ball at sidelines
         if self.y < 0:
             self.a = 2*pi - self.a
-        if self.y + self.h > Game.HEIGHT: 
+        if self.y + self.h > Game.HEIGHT:
             self.a = 2*pi - self.a
         # Reflect ball at players
         if self.collides(self.game.player1):
@@ -286,29 +288,32 @@ class Ball(object):
         r2 = player.x + player.w
         t2 = player.y
         b2 = player.y + player.h
-            
+
         if l1 > r2:
-		    return False
+            return False
         if r1 < l2:
-		    return False
+            return False
         if t1 > b2:
-		    return False
+            return False
         if b1 < t2:
-	        return False
+            return False
         return True
-        
-            
-@app.route('/') 
+
+
+@app.route('/')
 def index():
-    return render_template('index.html') 
+    return render_template('index.html')
+
 
 @app.route('/audio/<path:path>')
 def send_audio(path):
     return send_from_directory('audio', path)
 
+
 @socketio.on('connect')
 def handle_connect():
     pass
+
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -319,6 +324,7 @@ def handle_disconnect():
     player = Player.find(request.sid)
     if player:
         Player.unregister(player)
+
 
 @socketio.on('signup')
 def handle_signup(json):
@@ -334,6 +340,7 @@ def handle_signup(json):
         Player.add_lobby(player)
         player.emit('signed_up', json)
 
+
 @socketio.on('challenge_ai')
 def handle_challenge_ai():
     player = Player.find(request.sid)
@@ -342,6 +349,7 @@ def handle_challenge_ai():
         game = Game(player, AIPlayer(player.sid))
         Game.register(game)
         game.emit_start()
+
 
 @socketio.on('move')
 def handle_move(json):
@@ -353,12 +361,14 @@ def handle_move(json):
             player.move = json['direction']
         game.emit_update()
 
+
 @socketio.on('ball')
 def handle_ball():
     game = Game.find(request.sid)
     if game:
         game.do_update()
         game.emit_update()
+
 
 @socketio.on('serve')
 def handle_serve():
@@ -369,13 +379,15 @@ def handle_serve():
         game.do_update()
         game.emit_update()
 
+
 @socketio.on('serve_ai')
 def handle_serve_ai():
     game = Game.find(request.sid)
     if game:
         game.do_serve(game.player2)
-        game.do_update()    
+        game.do_update()
         game.emit_update()
+
 
 if __name__ == '__main__':
     socketio.run(app, host="0.0.0.0", debug=False)
