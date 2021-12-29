@@ -105,7 +105,7 @@
                 height:400px;
             }
         </style>
-        <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+	<script src="https://cdn.socket.io/4.4.0/socket.io.min.js" integrity="sha384-1fOn6VtTq3PWwfsOrk45LnYcGosJwzMHv+Xh/Jx5303FVOXzEnw0EpLv30mtjmlj" crossorigin="anonymous"></script>
         <script>
             var socket = io.connect('http://' + document.domain + ':' + location.port);
                 socket.on('connect', function() {
